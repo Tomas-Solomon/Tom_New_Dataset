@@ -1,61 +1,70 @@
 #!/bin/bash
 
-#SBATCH -p cpu,biomed_a30_gpu,biomed_a100_gpu
-#SBATCH -c 16
-#SBATCH --mem=16G
-#SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/2_01_Isoquant_Annotation_%a.log
-#SBATCH --array=2-4
+#SBATCH -p drive_cdt_gpu
+#SBATCH -c 2
+#SBATCH --mem=4G
+#SBATCH --output=outs/3_02_SUPPA2_FilePrep.log
 
-ml anaconda3
+# ===== DESCRIPTION OF SCRIPT =========================================================================
 
-source ~/.bashrc
-source activate isoquant
-source parameters.sh
-
-replica=$SLURM_ARRAY_TASK_ID
-
-sample_names=($(tail -n +2 Sample_Info_Long_Reads.csv | awk -v rep="$replica" -F, '$16 == rep && $15 == "LMN" {print $1}'))
-Neuron_Type=($(tail -n +2 Sample_Info_Long_Reads.csv | awk -v rep="$replica" -F, '$16 == rep {print $15}'))
-
-sample_id_1=${sample_names[0]}
-sample_id_2=${sample_names[1]}
-sample_id_3=${sample_names[2]}
-sample_id_4=${sample_names[3]}
-
-isoquant_output="${ISOQUANT_DIR}/${Neuron_Type[0]}_Replica${replica}"
 
 # The purpouse of this script is to generate an annotation map for each sample using the unfiltered bam files.
 # This will then be QC'd and condenced before generating the final transcript quantification using hte filtered set of bam files.
 # Transcripts will also be quantified in this script as a checkpoint to make sure the reads were QC'd and aligned propperly.
 
+# ======================================================================================================
+
+ml anaconda3
+
+source ~/.bashrc
+source activate isoquant
+
+source parameters.sh
 
 reference="GCA_000001405.15_GRCh38_full_analysis_set.fna"
 annotation="GCA_000001405.15_GRCh38_full_analysis_set.refseq_annotation.gtf"
 ext="sorted"
 
-output_dir=`echo "isoquant${ext}"`
-
-
 mkdir $ISOQUANT_DIR
 
-#Check if file indexed, if not index it
 
-for sample in ${sample_id_1} ${sample_id_2} ${sample_id_3} ${sample_id_4}; do
+# Separate transcripts by experiment group ===========================================================================
 
-   if ! test -f ${BAM_DIR}/${sample}.${ext}.bam.bai; then
+# Declare array with list of conditions (UMN, UMN_NMD etc ...) and number of replicates
 
-      echo ""
-      echo "File Not Indexed"
-      echo "Indexing Now ... "
-      echo ""
+conditions=($(sed '/UMN_4/d' Sample_Info_Long_Reads.csv | tail -n +2 | awk -F, '{print $17}' | sort -n | uniq))
+condition_list=($(sed '/UMN_4/d' Sample_Info_Long_Reads.csv | tail -n +2 | awk -F, '{print $17}'))
+sample_list=($(sed '/UMN_4/d' Sample_Info_Long_Reads.csv | tail -n +2 | awk -F, '{print $1}'))
+sample_number=`sed '/UMN_4/d' Sample_Info_Long_Reads.csv | tail -n +2 | wc -l | awk '{print $1}'`
 
-      samtools index ${BAM_DIR}/${sample}.${ext}.bam
-   fi
+
+samples_in_condition_list=() # Will store the samples names for each condition in the same order as the $condition_list array
+
+# The first for loop assigns a list of columns headers to the samples_in_condition_list array (eg. "1,UMN_1,UMN_2,UMN_3")
+for condition in "${conditions[@]}"; do
+
+    columns_to_keep=""
+
+    # This loop generates the list of columns to include per condition
+    for n in $(seq 1 $sample_number); do
+
+        if [ "$condition" == "${condition_list[$n]}" ]; then
+
+            columns_to_keep="${BAM_DIR}/${sample_list[$n]}.${ext}.bam $columns_to_keep" # Using comma to separate each column name as required by csvcut
+        
+        fi
+
+    done
+    
+    samples_in_condition_list+=("$columns_to_keep")
 
 done
 
+
 # Run isoquant
 
+
+isoquant_output="$ISOQUANT_DIR/${condition_list[$SLURM_ARRAY_TASK_ID]}"
 
 mkdir $ISOQUANT_DIR
 mkdir $isoquant_output
@@ -63,12 +72,11 @@ mkdir $isoquant_output
 isoquant.py \
    --reference ${REF_DIR}/$reference \
    --genedb ${REF_DIR}/$annotation \
-   --bam "${BAM_DIR}/${sample_id_1}.${ext}.bam" "${BAM_DIR}/${sample_id_2}.${ext}.bam" "${BAM_DIR}/${sample_id_3}.${ext}.bam" "${BAM_DIR}/${sample_id_4}.${ext}.bam" \
+   --bam ${samples_in_condition_list[$SLURM_ARRAY_TASK_ID]} \
    --complete_genedb --threads 16 \
    --data_type nanopore \
    -o $isoquant_output
 
 
-# Create tsv files for each sample
 
 
