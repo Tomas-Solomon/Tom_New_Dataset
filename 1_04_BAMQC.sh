@@ -4,7 +4,7 @@
 #SBATCH -c 16
 #SBATCH --mem=16G
 #SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/1_04_BAMQC_%a.log
-#SBATCH --array=13-20
+#SBATCH --array=21-28
 
 
 ml anaconda3
