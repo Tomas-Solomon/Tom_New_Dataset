@@ -1,9 +1,10 @@
 #!/bin/bash
 
-#SBATCH -p drive_cdt_gpu,cpu,biomed_a30_gpu,biomed_a100_gpu
-#SBATCH -c 8
-#SBATCH --mem=8G
-#SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/2_03_Isoquant_AllSamples_%a.log
+#SBATCH -p cpu,biomed_a30_gpu,biomed_a100_gpu
+#SBATCH -c 16
+#SBATCH --mem=64G
+#SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/2_03_Isoquant_AllSamples.log
+#SBATCH --time=2-00:00:00
 
 ml anaconda3
 
@@ -11,7 +12,7 @@ source ~/.bashrc
 source activate isoquant
 source parameters.sh
 
-isoquant_output="${ISOQUANT_DIR}/all_samples"
+isoquant_output="${ISOQUANT_DIR}/all_samples_sensitive_ont"
 
 # The purpouse of this script is to generate an annotation map for each sample using the unfiltered bam files.
 # This will then be QC'd and condenced before generating the final transcript quantification using hte filtered set of bam files.
@@ -42,7 +43,10 @@ isoquant.py \
    --complete_genedb --threads 16 \
    --no_secondary --min_mapq 10 \
    --data_type nanopore \
+   --model_construction_strategy sensitive_ont \
+   --sqanti_output \
    -o $isoquant_output
 
+# sensitive_ont used instead of default_ont as cryptic transcript were being filtered (eg. MNAT1)
 
 

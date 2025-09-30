@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#SBATCH -p cpu
-#SBATCH -c 16
-#SBATCH --mem=16G
+#SBATCH -p cpu,drive_cdt_gpu
+#SBATCH -c 8
+#SBATCH --mem=8G
 #SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/1_03_Alignment_%a.log
-#SBATCH --array=13-16
+#SBATCH --array=21-28
 
 ml anaconda3
 ml samtools
@@ -16,15 +16,15 @@ source parameters.sh
 
 sample_id=`tail -n +2 Sample_Info_Long_Reads.csv | awk -F, '{print $1}' | head -n $SLURM_ARRAY_TASK_ID | tail -n 1`
 
-reference_mmi=GCA_000001405.15_GRCh38_full_analysis_set.mmi
-reference_fna=$REF_DIR/$reference
-
 mkdir -p $BAM_DIR
 
 # Map reads
 echo ""
 echo "Started Mapping Reads"
-minimap2 -ax splice --MD $REF_DIR/$reference_mmi $TRIM_DIR/${sample_id}.fastq | samtools view -bS  > $BAM_DIR/${sample_id}.bam
+minimap2 -ax splice --MD $REF_DIR/$reference_mmi $TRIM_DIR/${sample_id}.fastq -o $BAM_DIR/${sample_id}.sam #| samtools view -bS  > $BAM_DIR/${sample_id}.tmp.bam & mv $BAM_DIR/${sample_id}.tmp.bam $BAM_DIR/${sample_id}.bam
+samtools view -bS $BAM_DIR/${sample_id}.sam > $BAM_DIR/${sample_id}.tmp.bam
+mv $BAM_DIR/${sample_id}.tmp.bam $BAM_DIR/${sample_id}.bam
+rm $BAM_DIR/${sample_id}.sam
 
 # Sort bam files
 echo ""

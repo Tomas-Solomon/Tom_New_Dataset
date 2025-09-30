@@ -4,7 +4,7 @@
 #SBATCH -c 16
 #SBATCH --mem=16G
 #SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/2_01_Isoquant_Annotation_%a.log
-#SBATCH --array=1
+#SBATCH --array=2-4
 
 ml anaconda3
 

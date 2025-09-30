@@ -3,7 +3,7 @@
 #SBATCH -p cpu,biomed_a30_gpu,biomed_a100_gpu,drive_cdt_gpu
 #SBATCH -c 2
 #SBATCH --mem=4G
-#SBATCH --array=13-16
+#SBATCH --array=13-16,21-28
 #SBATCH --output=/scratch/prj/bcn_marzi_lab/Long-Reads-ALS/Tom_New_Dataset/outs/1_01_Merge_Organize.%a.log
 
 #awk -F, '{print $1, $8, $9, $14}' Sample_Info_Long_Reads.csv
